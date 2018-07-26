@@ -1,5 +1,56 @@
 **Future release:**
 
+**Version 0.9.4**
+
+* Fixed handling of empty values in JSON plugin
+* Fixed closing of connections with no data in TCP input
+* Fixed memleak in dummy storage plugin
+* Removed message about internal error when the ODID 0 is used by a source (false alarm)
+* Fixed markdown syntax
+* Support DocBook XSL Stylesheets v1.79
+* Removed superfluous files from devel package
+* Added systemd service file. No automatic installation
+* forwarding: UDP template refresh timeout is now configurable
+* Added basic UDP support to forwarding, no template resending
+* Utils: new template mapper (originally from forwarding plugin)
+* Added check for more specific libssl (Fedora 26 compatibility)
+* Removed pkgconfig from spec file dependencies.
+* Fixed issue: Long closing time of storage plugin can result in removal of valid templates
+
+**Version 0.9.2:**
+
+* Added ansible installation from sources
+* Fixed many typos and formatting issues
+* Updated build system to work with Fedora copr build system (epel7 and all fedora releases)
+* Updated install information. It is possible to use copr repositories
+* Fixed forwarding plugin test
+* Forwarding: fixed bug with multiple send of the same templates
+* JSON output + SISO: fixed crashes after destination disconnection
+* ipfixsend: new version with uncached file reading (better for multiple gigabyte files)
+* Added timenow plugin which updates flow times to make flow data fresh
+* Added anonymization plugin man pages to rpm build
+* Added man page documentation for anonymization plugin. Fixed random key init
+* Many more bugfixes
+
+**Version 0.9.1:**
+
+* Statistics: print statistics with default verbosity level
+* Fixed a memory leak in TCP input plugin
+* Extended test cases for two ODIDs from same source
+* UDP input: consider ODID when identifying unique transport sessions
+* New forwarding plugin (added support for automatic reconnection of destinations, zero-copy packet builder, template remapping, dropped sup
+port for UDP and SCTP)
+* Filter plugin: fixed filter for IP addresses
+* Fixed timestamp conversion for NetFlowv9
+* Fixed closing of SCTP connection bug reported by Krzysztof Dudkiewicz
+* Improved ipfixsend (real time sending option, bugfixes)
+* Fixed several build issues (extern "C" problems, libxml dependency)
+* Better handling of multiple fileds with same IE number
+* Bug fixes in the profiler
+* Improved semantics and coding style
+
+* Many thanks to Kirc for improvements, bug reports and overall contribution to the codebase
+
 **Version 0.9.0:**
 
 * Many bug fixes

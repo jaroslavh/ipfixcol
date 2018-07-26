@@ -39,7 +39,7 @@
 AC_PREREQ([2.60])
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([fbitmerge], [0.1.6])
+AC_INIT([fbitmerge], [0.1.7])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_CONFIG_SRCDIR([src/fbitmerge.cpp])
 AC_CONFIG_HEADERS([config.h])
@@ -49,7 +49,9 @@ AC_SUBST(RELEASE)
 
 # Initialization
 : ${CXXFLAGS=""}
-AM_CXXFLAGS="-Wall -O2"
+AM_CXXFLAGS="-Wall -O2 -fPIE"
+# We need -fPIE to link to some of the libraries
+LDFLAGS="$LDFLAGS -fPIE"
 AC_LANG(C++)
 
 CXX="g++"
@@ -69,6 +71,7 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test -n $DOXYGEN])
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
+AC_SUBST([BUILDREQS])
 
 # Check for standard programs
 AC_PROG_CXX

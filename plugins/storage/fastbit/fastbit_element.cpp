@@ -132,7 +132,7 @@ std::string element::get_part_info()
 		+ "END Column\n";
 }
 
-el_var_size::el_var_size(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config)
+el_var_size::el_var_size(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size)
 {
 	(void) buf_size;
 
@@ -170,7 +170,7 @@ int el_var_size::set_type()
 	return 0;
 }
 
-el_float::el_float(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config)
+el_float::el_float(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size)
 {
 	_config = config;
 	_en = en;
@@ -229,7 +229,7 @@ int el_float::set_type()
 	return 0;
 }
 
-el_text::el_text(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config):
+el_text::el_text(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size):
 	_var_size(false), _true_size(size), _sp_buffer(NULL)
 {
 	_config = config;
@@ -271,7 +271,7 @@ el_text::el_text(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct f
 	}
 }
 
-int el_text::append_str(void *data, int size)
+int el_text::append_str(void *data, uint16_t size)
 {
 	/* Check buffer space */
 	if (_filled + size + 1 >= _buf_max) { /* 1 = terminating zero */
@@ -338,6 +338,22 @@ int el_text::flush(std::string path)
 			return 1;
 		}
 
+		/* Get file offset */
+		struct stat stat_buf;
+		int rc = stat((path + "/" + _name).c_str(), &stat_buf);
+
+		/* Adjust the _sp_buffer values */
+		if (rc == 0 && stat_buf.st_size != 0) {
+			uint64_t file_offset = stat_buf.st_size;
+
+			/* We will ignore the first zero offset. The .sp file aready contains offset
+			 * pointing just after the file */
+			for (uint32_t i = 8; i < _sp_buffer_offset; i+=8) {
+				*(uint64_t *) (_sp_buffer + i-8) = (*(uint64_t *) (_sp_buffer + i)) + file_offset;
+			}
+			_sp_buffer_offset -= 8;
+		}
+
 		check = fwrite(_sp_buffer, 1 , _sp_buffer_offset, f);
 		if (check != (size_t) _sp_buffer_offset) {
 			MSG_ERROR(msg_module, "Error while writing data (fwrite)");
@@ -350,11 +366,7 @@ int el_text::flush(std::string path)
 
 		/* Reset buffer */
 		_sp_buffer_offset = 8;
-
-		/* TODO
-		 * It is necessary to get the offset right before next write to disk
-		 * Get the size of the element on disk and use it to calculate offset
-		 */
+		*(uint64_t *) _sp_buffer = 0;
 	}
 
 	/* Call parent function to write the data buffer */
@@ -368,7 +380,7 @@ el_text::~el_text()
 	free(_sp_buffer);
 }
 
-el_ipv6::el_ipv6(int size, uint32_t en, uint16_t id, int part, uint32_t buf_size, struct fastbit_config *config)
+el_ipv6::el_ipv6(struct fastbit_config *config, int size, uint32_t en, uint16_t id, int part, uint32_t buf_size)
 {
 	_config = config;
 	_en = en;
@@ -403,7 +415,7 @@ int el_ipv6::set_type()
 	return 0;
 }
 
-el_blob::el_blob(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config):
+el_blob::el_blob(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size):
 	_var_size(false), _true_size(size), _sp_buffer(NULL)
 {
 	_config = config;
@@ -503,6 +515,22 @@ int el_blob::flush(std::string path)
 			return 1;
 		}
 
+		/* Get file offset */
+		struct stat stat_buf;
+		int rc = stat((path + "/" + _name).c_str(), &stat_buf);
+
+		/* Adjust the _sp_buffer values */
+		if (rc == 0 && stat_buf.st_size != 0) {
+			uint64_t file_offset = stat_buf.st_size;
+
+			/* We will ignore the first zero offset. The .sp file aready contains offset
+			 * pointing just after the file */
+			for (uint32_t i = 8; i < _sp_buffer_offset; i+=8) {
+				*(uint64_t *) (_sp_buffer + i-8) = (*(uint64_t *) (_sp_buffer + i)) + file_offset;
+			}
+			_sp_buffer_offset -= 8;
+		}
+
 		check = fwrite(_sp_buffer, 1 , _sp_buffer_offset, f);
 		if (check != (size_t) _sp_buffer_offset) {
 			MSG_ERROR(msg_module, "Error while writing data (fwrite)");
@@ -515,11 +543,7 @@ int el_blob::flush(std::string path)
 
 		/* Reset buffer */
 		_sp_buffer_offset = 8;
-
-		/* TODO
-		 * It is necessary to get the offset right before next write to disk
-		 * Get the size of the element on disk and use it to calculate offset
-		 */
+		*(uint64_t *) _sp_buffer = 0;
 	}
 
 	/* Call parent function to write the data buffer */
@@ -533,7 +557,7 @@ el_blob::~el_blob()
 	free(_sp_buffer);
 }
 
-el_uint::el_uint(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config)
+el_uint::el_uint(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size)
 {
 	_config = config;
 	_en = en;
@@ -673,7 +697,8 @@ int el_sint::set_type()
 	return 0;
 }
 
-el_sint::el_sint(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct fastbit_config *config)
+el_sint::el_sint(struct fastbit_config *config, int size, uint32_t en, uint16_t id, uint32_t buf_size)
+ : el_uint(config, size, en, id, buf_size)
 {
 	_config = config;
 	_en = en;
@@ -693,7 +718,7 @@ el_sint::el_sint(int size, uint32_t en, uint16_t id, uint32_t buf_size, struct f
 	allocate_buffer(buf_size);
 }
 
-el_unknown::el_unknown(int size, uint32_t en, uint16_t id, int part, uint32_t buf_size, struct fastbit_config *config)
+el_unknown::el_unknown(struct fastbit_config *config, int size, uint32_t en, uint16_t id, int part, uint32_t buf_size)
 {
 	(void) part;
 	(void) buf_size;

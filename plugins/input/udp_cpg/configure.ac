@@ -38,8 +38,8 @@
 
 AC_PREREQ([2.60])
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol-udp-cpg-input], [0.1.0])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
+AC_INIT([ipfixcol-udp-cpg-input], [0.1.1])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability subdir-objects])
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 
@@ -65,6 +65,7 @@ AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
+AC_SUBST([BUILDREQS])
 
 # Check for standard programs
 AC_PROG_CXX
@@ -89,7 +90,8 @@ AC_CHECK_HEADERS([netdb.h netinet/in.h stdint.h stdlib.h string.h sys/socket.h u
 
 # Check whether we can find headers dir in relative path (git repository)
 AS_IF([test -d $srcdir/../../../base/headers],
-	[CPPFLAGS="$CPPFLAGS -I$srcdir/../../../base/headers"]
+	[CPPFLAGS="$CPPFLAGS -I$srcdir/../../../base/headers"
+	BUILD_AGAINST="git"]
 )
 
 AC_CHECK_HEADERS([ipfixcol.h], , AC_MSG_ERROR([ipfixcol.h header missing. Please install ipfixcol-devel package]), [AC_INCLUDES_DEFAULT])
@@ -152,6 +154,7 @@ echo "
   Distribution..: $DISTRO
   C Compiler....: $CC $AM_CFLAGS $CFLAGS $AM_CPPFLAGS $CPPFLAGS
   Linker........: $LDFLAGS $LIBS
+  Build against.: ${BUILD_AGAINST:-system}
   rpmbuild......: ${RPMBUILD:-NONE}
   Build doc.....: ${enable_doc:-yes}
   xsltproc......: ${XSLTPROC:-NONE}

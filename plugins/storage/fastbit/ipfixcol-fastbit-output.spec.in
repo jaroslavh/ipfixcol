@@ -10,10 +10,9 @@ Vendor: CESNET, z.s.p.o.
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-BuildRequires: gcc make doxygen
-Requires: fastbit-liberouter, libfastbit >= 2.0.3.2
+BuildRequires: gcc-c++ autoconf libtool make doxygen libxslt @BUILDREQS@
+Requires: fastbit-liberouter, libfastbit >= 2.0.3.2, ipfixcol >= 0.7.1
 BuildRequires: fastbit-liberouter-devel, libfastbit-devel >= 2.0.3.2, ipfixcol-devel >= 0.7.1
-Requires: ipfixcol >= 0.7.1
 
 %description
 Fastbit storage plugin for ipfixcol.
@@ -23,12 +22,18 @@ Fastbit storage plugin for ipfixcol.
 %setup
 
 %post
-ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit -t fastbit -s "%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit-output.so" -f
+# Add config only during initial installation, not upgrade
+if [ "$1" = "1" ]; then
+    ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit -t fastbit -s "%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit-output.so" -f
+fi
 
 %preun
 
 %postun
-ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit
+# Remove config only for uninstall, not upgrade
+if [ "$1" = "0" ]; then
+    ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit
+fi
 
 %build
 %configure --with-distro=@DISTRO@

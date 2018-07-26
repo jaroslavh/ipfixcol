@@ -114,7 +114,7 @@ struct _fwd_dest {
 	struct timespec reconn_period;
 
 	/** Template manager                                                     */
-	fwd_tmplt_mgr_t *tmplt_mgr;
+	tmapper_t *tmplt_mgr;
 };
 
 /**
@@ -133,6 +133,15 @@ struct tmplts_for_reconnected {
 	/** A size of the array                                                  */
 	uint32_t cnt;
 };
+
+/**
+ * \brief Auxiliary structure for checking timeout of UDP templates
+ */
+struct udp_template_timeout {
+	time_t now;             /**< Current time */
+	unsigned int timeout;   /**< Template timeout (in seconds) */
+};
+
 
 /**
  * \brief Callback function prototype
@@ -185,6 +194,12 @@ static uint32_t *source_odids_get_seq(struct dst_client *dst, uint32_t odid)
 
 		dst->seq_max = new_size;
 		dst->seq_data = new_arr;
+	}
+
+	// Just check that we have a valid pointer
+	if (!dst->seq_data) {
+		MSG_ERROR(msg_module, "dst_client with uninitialized data");
+		return NULL;
 	}
 
 	// Fill
@@ -501,6 +516,28 @@ static bool aux_dummy_true(struct dst_client *client, void *data)
 }
 
 /**
+ * \brief Test whether UDP client has expired templates
+ * \param[in] client Destination
+ * \param[in] data   UDP template timeout structure
+ * \return When the client expired returns true and updates expiration time.
+ *   Otherwise returns false.
+ */
+static bool aux_udp_expired(struct dst_client *client, void *data)
+{
+	struct udp_template_timeout *params = (struct udp_template_timeout *) data;
+	if (sender_get_proto(client->sender) != IPPROTO_UDP) {
+		return false;
+	}
+
+	if (sender_get_tmpl_time(client->sender) + params->timeout > params->now) {
+		return false;
+	}
+
+	sender_set_tmpl_time(client->sender, params->now);
+	return true;
+}
+
+/**
  * \brief Thread for reconnection of disconnected destinations
  * \param[in,out] arg Configuration of Destination Manager
  * \return Nothing
@@ -593,7 +630,7 @@ int dest_connector_stop(fwd_dest_t *dst_mgr)
 }
 
 /** Create structure for all remote destinations */
-fwd_dest_t *dest_create(fwd_tmplt_mgr_t *tmplt_mgr)
+fwd_dest_t *dest_create(tmapper_t *tmplt_mgr)
 {
 	if (!tmplt_mgr) {
 		return NULL;
@@ -690,19 +727,19 @@ void dest_reconnect(fwd_dest_t *dst_mgr, bool verbose)
  * \param[in] type Type of the template (#TM_TEMPLATE or #TM_OPTIONS_TEMPLATE)
  * \return On success returns 0. Otherwise returns non-zero value.
  */
-static int dest_templates_aux_fill(fwd_bldr_t *bldr, fwd_tmplt_mgr_t *mgr,
+static int dest_templates_aux_fill(fwd_bldr_t *bldr, tmapper_t *mgr,
 	uint32_t odid, int type)
 {
 	uint16_t      tmplt_cnt;
-	fwd_tmplt_t **tmplt_arr;
+	tmapper_tmplt_t **tmplt_arr;
 
-	tmplt_arr = tmplts_get_templates(mgr, odid, type, &tmplt_cnt);
+	tmplt_arr = tmapper_get_templates(mgr, odid, type, &tmplt_cnt);
 	if (!tmplt_arr) {
 		return 1;
 	}
 
 	for (unsigned int i = 0; i < tmplt_cnt; ++i) {
-		const fwd_tmplt_t *tmp = tmplt_arr[i];
+		const tmapper_tmplt_t *tmp = tmplt_arr[i];
 		if (bldr_add_template(bldr, tmp->rec, tmp->length, tmp->id, type)) {
 			free(tmplt_arr);
 			return 1;
@@ -739,7 +776,7 @@ static void dest_templates_free(struct tmplts_per_odid *templates, uint32_t cnt)
  * \warning The structure MUST be freed by dest_templates_free()
  */
 static struct tmplts_per_odid *dest_templates_prepare(
-	fwd_tmplt_mgr_t *mgr, const uint32_t *odids, uint32_t cnt)
+	tmapper_t *mgr, const uint32_t *odids, uint32_t cnt)
 {
 	bool failure = false;
 
@@ -805,11 +842,20 @@ static struct tmplts_per_odid *dest_templates_prepare(
 	return result;
 }
 
-/**
- * \brief Check and move reconnected destinations to connected destinations
- * \param[in,out] dst_mgr Destination manager
- */
-static void dest_check_reconnected(fwd_dest_t *dst_mgr)
+// Check UDP connections for expired templates and move them to ready state
+void dest_check_expired_udp(fwd_dest_t *dst_mgr, unsigned int timeout)
+{
+	struct udp_template_timeout params;
+	params.now = time(NULL);
+	params.timeout = timeout;
+
+	pthread_mutex_lock(&dst_mgr->group_mtx);
+	group_move(dst_mgr->conn, dst_mgr->ready, &aux_udp_expired, &params);
+	pthread_mutex_unlock(&dst_mgr->group_mtx);
+}
+
+// Check and move reconnected destinations to connected destinations
+void dest_check_reconnected(fwd_dest_t *dst_mgr)
 {
 	if (dst_mgr->ready_empty) {
 		return;
@@ -819,7 +865,7 @@ static void dest_check_reconnected(fwd_dest_t *dst_mgr)
 	uint32_t *odid_ids;
 	uint32_t  odid_cnt;
 
-	odid_ids = tmplts_get_odids(dst_mgr->tmplt_mgr, &odid_cnt);
+	odid_ids = tmapper_get_odids(dst_mgr->tmplt_mgr, &odid_cnt);
 	if (!odid_ids) {
 		MSG_ERROR(msg_module, "Failed to create templates for reconnected "
 			"client(s).");
@@ -1118,9 +1164,6 @@ void dest_send(fwd_dest_t *dst_mgr, fwd_bldr_t *bldr_all,
 	fwd_bldr_t *bldr_tmplts, enum DIST_MODE mode)
 {
 	bool res;
-
-	// Add reconnected clients
-	dest_check_reconnected(dst_mgr);
 
 	// Distribution
 	switch (mode) {

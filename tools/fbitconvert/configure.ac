@@ -39,7 +39,7 @@
 AC_PREREQ([2.60])
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([fbitconvert], [1.1.2])
+AC_INIT([fbitconvert], [1.1.3])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_CONFIG_SRCDIR([src/fbitconvert.in])
 AC_CONFIG_HEADERS([config.h])
@@ -66,6 +66,7 @@ AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
+AC_SUBST([BUILDREQS])
 
 # Check for standard programs
 AC_PROG_INSTALL

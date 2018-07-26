@@ -657,7 +657,7 @@ static int insert_into(struct postgres_config *conf, const char *table_name, con
 					memcpy(string, data_set->records+data_index, length);
 
 					sql_len += snprintf(sql_command+sql_len, sql_command_max_len-sql_len,
-						"%s", string);
+						"'%s'", string);
 					free(string);
 					string = NULL;
 					break;
@@ -665,6 +665,7 @@ static int insert_into(struct postgres_config *conf, const char *table_name, con
 				case (BOOLEAN):
 					uint8 = *((uint8_t *) data_set->records+data_index);
 
+					string = "NULL";
 					/* in IPFIX, boolean is encoded in single octet
 					 * 1 means TRUE, 2 means FALSE */
 					switch (uint8) {
@@ -1059,7 +1060,7 @@ int storage_init(char *params, void **config)
 	}
 
 	if (pass) {
-		connection_string_len += strlen("pass=") + strlen(pass) + 1;
+		connection_string_len += strlen("password=") + strlen(pass) + 1;
 	}
 
 	connection_string_len += 1;   /* terminating NULL */
@@ -1116,7 +1117,7 @@ int storage_init(char *params, void **config)
 	/* pass specified */
 	if (pass) {
 		str_len += snprintf(connection_string+str_len, connection_string_len-str_len,
-			" %s=%s", "pass", pass);
+			" %s=%s", "password", pass);
 		free(pass);
 	}
 
@@ -1126,23 +1127,31 @@ int storage_init(char *params, void **config)
 	/* try to connect to the database */
 	conn = PQconnectdb(connection_string+1);
 	if (PQstatus(conn) != CONNECTION_OK) {
-		MSG_ERROR(msg_module, "Unable to create connection to the database: %s", PQerrorMessage(conn));
+		MSG_ERROR(msg_module, "Unable to create connection to the database(connection string = %s) : %s",connection_string+1, PQerrorMessage(conn));
 		goto err_connection_string;
 	}
 
+	conf->table_size = 128;	/* default value, just a guess */
+	conf->table_names = (uint16_t *) malloc(conf->table_size * sizeof(uint16_t));
+	if (!(conf->table_names)) {
+		MSG_ERROR(msg_module, "Out of memory (%s:%d)", __FILE__, __LINE__);
+		goto err_table_names;
+	}
+	memset(conf->table_names, 0, conf->table_size * sizeof(uint16_t));
+
+	conf->conn = conn;
+	*config = conf;
+
+	/* done using connection string */
+	free(connection_string);
 
 	/* we don't need this XML configuration anymore */
 	xmlFreeDoc(doc);
 
-	conf->table_size = 128;	/* default value, just guess */
-	conf->table_names = (uint16_t *) malloc(conf->table_size * sizeof(uint16_t));
-
-	conf->conn = conn;
-
-	*config = conf;
-
 	return 0;
 
+err_table_names:
+	PQfinish(conf->conn);
 
 err_connection_string:
 	free(connection_string);

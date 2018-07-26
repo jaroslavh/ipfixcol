@@ -10,10 +10,9 @@ Vendor: CESNET, z.s.p.o.
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-BuildRequires: gcc make doxygen
-Requires: libxml2
-BuildRequires: rrdtool-devel ipfixcol-devel >= 0.7.1
-Requires: ipfixcol >= 0.7.1 rrdtool
+BuildRequires: gcc-c++ autoconf libtool make doxygen libxslt @BUILDREQS@
+BuildRequires: libxml2-devel rrdtool-devel ipfixcol-devel >= 0.7.1
+Requires: libxml2 rrdtool ipfixcol >= 0.7.1
 
 %description
 stats intermediate plugin for ipfixcol.
@@ -23,12 +22,18 @@ stats intermediate plugin for ipfixcol.
 %setup
 
 %post
-ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n stats -t stats -s "%{_datadir}/ipfixcol/plugins/ipfixcol-stats-inter.so" -f
+# Add config only during initial installation, not upgrade
+if [ "$1" = "1" ]; then
+    ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n stats -t stats -s "%{_datadir}/ipfixcol/plugins/ipfixcol-stats-inter.so" -f
+fi
 
 %preun
 
 %postun
-ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n stats
+# Remove config only for uninstall, not upgrade
+if [ "$1" = "0" ]; then
+    ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n stats
+fi
 
 %build
 %configure --with-distro=@DISTRO@

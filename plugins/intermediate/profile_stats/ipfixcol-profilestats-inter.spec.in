@@ -10,10 +10,9 @@ Vendor: CESNET, z.s.p.o.
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-BuildRequires: gcc make doxygen
-Requires: libxml2
-BuildRequires: rrdtool-devel ipfixcol-devel >= 0.8.0
-Requires: ipfixcol >= 0.8.0 rrdtool
+BuildRequires: gcc-c++ autoconf libtool make doxygen libxslt @BUILDREQS@
+BuildRequires: libxml2-devel rrdtool-devel ipfixcol-devel >= 0.8.0
+Requires: libxml2 rrdtool ipfixcol >= 0.8.0
 
 %description
 profilestats intermediate plugin for ipfixcol.
@@ -23,12 +22,18 @@ profilestats intermediate plugin for ipfixcol.
 %setup
 
 %post
-ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n profilestats -t profilestats -s "%{_datadir}/ipfixcol/plugins/ipfixcol-profilestats-inter.so" -f
+# Add config only during initial installation, not upgrade
+if [ "$1" = "1" ]; then
+    ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n profilestats -t profilestats -s "%{_datadir}/ipfixcol/plugins/ipfixcol-profilestats-inter.so" -f
+fi
 
 %preun
 
 %postun
-ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n profilestats
+# Remove config only for uninstall, not upgrade
+if [ "$1" = "0" ]; then
+    ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p m -n profilestats
+fi
 
 %build
 %configure --with-distro=@DISTRO@

@@ -1,5 +1,29 @@
 **Future release:**
 
+**Version 1.6.2:**
+
+* Fixed markdown syntax
+* Support DocBook XSL Stylesheets v1.79
+* Fixed problem with plugin update removing plugin configuration.
+* Fixed sp file creation for string and blob elements
+* Fixed storing of signed ints
+* Fix erroneous debug log messages
+* Fix static exporter IP address in od_infos
+* Added info about used headers to configure script of all plugins
+* Updated build system to work with Fedora copr build system (epel7 and all fedora releases)
+
+**Version 1.6.0:**
+
+* Replaced use of get_type_from_xml by get_element_by_id
+* Fixed build with latest Fastbit library
+* Code consistency improvements, lots of refactoring
+* Fixed handling of large PENs
+* Fixed extern "C" problems reported by J Thomas
+* Fixed uninitialized variable
+* Unknown elements with variable size are now stored as blobs
+* Creation of .sp files is configurable from startup config
+* Added handling for multiple elements with same name. Storing only the first one in the template.
+
 **Version 1.5.0:**
 
 * Minor tweaks in -part.txt
