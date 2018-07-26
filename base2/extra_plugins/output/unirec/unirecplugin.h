@@ -47,16 +47,14 @@
 #include "configuration.h"
 #include "translator.h"
 
-extern const char *msg_module;
-
-// Size of conversion buffer
-#define REC_BUFF_SIZE (65535)
-
 /**
  * \brief Plugin instance structure
  */
 struct conf_unirec {
-    struct conf_params *params; /**< Configuration from XML file             */
+    /**
+     * Configuration from XML file
+     */
+    struct conf_params *params;
 
     /**
      * TRAP context
@@ -68,8 +66,15 @@ struct conf_unirec {
      */
     ur_template_t *urtmpl;
 
-    translator_t *translator; /**< IPFIX to UniRec translator               */
-};
+    /**
+     * UniRec message that is allocated in ipx_plugin_init()
+     */
+    void *ur_message;
 
+    /**
+     * IPFIX to UniRec translator
+     */
+    translator_t *translator;
+};
 
 #endif //IPFIX_UNIREC_H
